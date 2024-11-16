@@ -13,9 +13,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.recyclerview.widget.RecyclerView;
 
-import java.text.SimpleDateFormat;
 import java.util.List;
-import java.util.Locale;
 
 import ma.emsi.appcomptes.beans.Compte;
 import ma.emsi.appcomptes.api.ApiInterface;
@@ -27,10 +25,13 @@ import retrofit2.Response;
 public class CompteAdapter extends RecyclerView.Adapter<CompteAdapter.CompteViewHolder> {
 
     private List<Compte> comptes;
+    private final String payloadFormat; // To hold the format (JSON or XML)
 
-    public CompteAdapter(List<Compte> comptes) {
+    public CompteAdapter(List<Compte> comptes, String payloadFormat) {
         this.comptes = comptes;
+        this.payloadFormat = payloadFormat;
     }
+
     static class CompteViewHolder extends RecyclerView.ViewHolder {
         TextView text1, text2, text3;
         Button deleteButton, modifyButton;
@@ -39,7 +40,6 @@ public class CompteAdapter extends RecyclerView.Adapter<CompteAdapter.CompteView
             super(itemView);
             text1 = itemView.findViewById(R.id.text1);
             text2 = itemView.findViewById(R.id.text2);
-            text3 = itemView.findViewById(R.id.text3);
             deleteButton = itemView.findViewById(R.id.deleteButton);
             modifyButton = itemView.findViewById(R.id.modifyButton);
         }
@@ -59,12 +59,8 @@ public class CompteAdapter extends RecyclerView.Adapter<CompteAdapter.CompteView
         holder.text1.setText("Type: " + compte.getType());
         holder.text2.setText("Solde: " + compte.getSolde());
 
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-        String formattedDate = sdf.format(compte.getDateCreation());
-        holder.text3.setText("Date: " + formattedDate);
-
         holder.deleteButton.setOnClickListener(v -> deleteCompte(compte.getIdLong(), position, holder.itemView.getContext()));
-        holder.modifyButton.setOnClickListener(v -> modifyCompte(compte, holder.itemView.getContext()));
+        holder.modifyButton.setOnClickListener(v -> modifyCompte(compte, position, holder.itemView.getContext()));
     }
 
     @Override
@@ -78,13 +74,12 @@ public class CompteAdapter extends RecyclerView.Adapter<CompteAdapter.CompteView
     }
 
     private void deleteCompte(Long compteId, int position, Context context) {
-        ApiInterface apiInterface = RetrofitClient.getApi();
+        ApiInterface apiInterface = RetrofitClient.getApi(payloadFormat);
         Call<Void> call = apiInterface.deleteCompte(compteId);
         call.enqueue(new Callback<Void>() {
             @Override
             public void onResponse(Call<Void> call, Response<Void> response) {
                 if (response.isSuccessful()) {
-
                     comptes.remove(position);
                     notifyItemRemoved(position);
                     Toast.makeText(context, "Compte supprimé avec succès!", Toast.LENGTH_SHORT).show();
@@ -100,7 +95,7 @@ public class CompteAdapter extends RecyclerView.Adapter<CompteAdapter.CompteView
         });
     }
 
-    private void modifyCompte(Compte compte, Context context) {
+    private void modifyCompte(Compte compte, int position, Context context) {
         View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_modify_compte, null);
 
         EditText editType = dialogView.findViewById(R.id.editType);
@@ -135,14 +130,15 @@ public class CompteAdapter extends RecyclerView.Adapter<CompteAdapter.CompteView
             compte.setType(updatedType);
             compte.setSolde(updatedSolde);
 
-            ApiInterface apiInterface = RetrofitClient.getApi();
+            ApiInterface apiInterface = RetrofitClient.getApi(payloadFormat);
             Call<Compte> call = apiInterface.updateCompte(compte.getIdLong(), compte);
             call.enqueue(new Callback<Compte>() {
                 @Override
                 public void onResponse(Call<Compte> call, Response<Compte> response) {
                     if (response.isSuccessful()) {
+                        comptes.set(position, compte);
+                        notifyItemChanged(position);
                         Toast.makeText(context, "Compte modifié avec succès!", Toast.LENGTH_SHORT).show();
-                        notifyDataSetChanged();
                         dialog.dismiss();
                     } else {
                         Toast.makeText(context, "Erreur lors de la modification", Toast.LENGTH_SHORT).show();
@@ -158,5 +154,4 @@ public class CompteAdapter extends RecyclerView.Adapter<CompteAdapter.CompteView
 
         dialog.show();
     }
-
 }

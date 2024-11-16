@@ -13,9 +13,10 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
+import ma.emsi.appcomptes.api.ApiInterface;
 import ma.emsi.appcomptes.beans.Compte;
 import ma.emsi.appcomptes.config.RetrofitClient;
 import retrofit2.Call;
@@ -28,13 +29,14 @@ public class MainActivity extends AppCompatActivity {
     private EditText soldeInput, typeInput;
     private RecyclerView recyclerView;
     private CompteAdapter compteAdapter;
+    private Spinner payloadTypeSpinner;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Spinner payloadTypeSpinner = findViewById(R.id.payloadTypeSpinner);
+        payloadTypeSpinner = findViewById(R.id.payloadTypeSpinner);
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
                 R.array.payload_types, android.R.layout.simple_spinner_item);
 
@@ -47,7 +49,8 @@ public class MainActivity extends AppCompatActivity {
         recyclerView = findViewById(R.id.recyclerView);
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        compteAdapter = new CompteAdapter(new ArrayList<>());
+        String selectedFormat = getSelectedPayloadFormat();
+        compteAdapter = new CompteAdapter(new ArrayList<>(), selectedFormat);
         recyclerView.setAdapter(compteAdapter);
         getAllComptes();
 
@@ -55,7 +58,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void getAllComptes() {
-        Call<List<Compte>> call = RetrofitClient.getApi().getAllComptes();
+        String selectedFormat = getSelectedPayloadFormat();
+        Call<List<Compte>> call = RetrofitClient.getClient(selectedFormat).create(ApiInterface.class).getAllComptes();
         call.enqueue(new Callback<List<Compte>>() {
             @Override
             public void onResponse(Call<List<Compte>> call, Response<List<Compte>> response) {
@@ -85,17 +89,9 @@ public class MainActivity extends AppCompatActivity {
         Compte newCompte = new Compte();
         newCompte.setSolde(Double.parseDouble(soldeText));
         newCompte.setType(typeText);
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-        String formattedDate = sdf.format(new Date());
 
-        try {
-            Date date = sdf.parse(formattedDate);
-            newCompte.setDateCreation(date);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        Call<Compte> call = RetrofitClient.getApi().createCompte(newCompte);
+        String selectedFormat = getSelectedPayloadFormat();
+        Call<Compte> call = RetrofitClient.getClient(selectedFormat).create(ApiInterface.class).createCompte(newCompte);
         call.enqueue(new Callback<Compte>() {
             @Override
             public void onResponse(Call<Compte> call, Response<Compte> response) {
@@ -104,13 +100,19 @@ public class MainActivity extends AppCompatActivity {
                     getAllComptes();
                 } else {
                     Toast.makeText(MainActivity.this, "Erreur lors de la création du compte.", Toast.LENGTH_SHORT).show();
+                    getAllComptes();
                 }
             }
 
             @Override
             public void onFailure(Call<Compte> call, Throwable t) {
                 Toast.makeText(MainActivity.this, "Erreur : " + t.getMessage(), Toast.LENGTH_SHORT).show();
+
             }
         });
+    }
+
+    private String getSelectedPayloadFormat() {
+        return payloadTypeSpinner.getSelectedItem().toString().equals("XML") ? "application/xml" : "application/json";
     }
 }

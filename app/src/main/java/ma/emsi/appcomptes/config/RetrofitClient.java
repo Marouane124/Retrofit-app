@@ -1,47 +1,39 @@
 package ma.emsi.appcomptes.config;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import ma.emsi.appcomptes.api.ApiInterface;
 import okhttp3.OkHttpClient;
-import okhttp3.logging.HttpLoggingInterceptor;
+import okhttp3.Request;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
-
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import retrofit2.converter.simplexml.SimpleXmlConverterFactory;
 
 public class RetrofitClient {
 
-    private static final String BASE_URL = "http://10.0.2.2:8082/";
-
     private static Retrofit retrofit;
 
-    public static Retrofit getRetrofitInstance() {
-        if (retrofit == null) {
-            HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
-            logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+    public static Retrofit getClient(String format) {
+        String finalAcceptHeader = format.equals("application/xml") ? "application/xml" : "application/json";
 
-            DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-            Gson gson = new GsonBuilder()
-                    .setDateFormat("yyyy-MM-dd'T'HH:mm:ss")
-                    .create();
+        OkHttpClient client = new OkHttpClient.Builder()
+                .addInterceptor(chain -> {
+                    Request request = chain.request().newBuilder()
+                            .addHeader("Accept", finalAcceptHeader)
+                            .build();
+                    return chain.proceed(request);
+                })
+                .build();
 
-            OkHttpClient client = new OkHttpClient.Builder()
-                    .addInterceptor(logging)
-                    .build();
+        retrofit = new Retrofit.Builder()
+                .baseUrl("http://10.0.2.2:8082/") // Replace with your actual base URL
+                .addConverterFactory(GsonConverterFactory.create())
+                .addConverterFactory(SimpleXmlConverterFactory.create())
+                .client(client)
+                .build();
 
-            retrofit = new Retrofit.Builder()
-                    .baseUrl(BASE_URL)
-                    .addConverterFactory(GsonConverterFactory.create(gson))
-                    .client(client)
-                    .build();
-        }
         return retrofit;
     }
 
-    public static ApiInterface getApi() {
-        return getRetrofitInstance().create(ApiInterface.class);
+    public static ApiInterface getApi(String format) {
+        return getClient(format).create(ApiInterface.class);
     }
 }

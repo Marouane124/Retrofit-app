@@ -4,7 +4,6 @@ import java.util.Date;
 public class Compte {
     private Long idLong;
     private double solde;
-    private Date dateCreation;
     private String type;
 
     public Long getIdLong() {
@@ -23,14 +22,6 @@ public class Compte {
         this.solde = solde;
     }
 
-    public Date getDateCreation() {
-        return dateCreation;
-    }
-
-    public void setDateCreation(Date dateCreation) {
-        this.dateCreation = dateCreation;
-    }
-
     public String getType() {
         return type;
     }
@@ -44,7 +35,6 @@ public class Compte {
         return "Compte{" +
                 "id=" + idLong +
                 ", solde=" + solde +
-                ", dateCreation=" + dateCreation +
                 ", type='" + type + '\'' +
                 '}';
     }
